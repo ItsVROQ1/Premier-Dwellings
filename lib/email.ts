@@ -143,6 +143,85 @@ export async function sendVerificationEmail({
   }
 }
 
+export interface SubscriptionReminderEmailParams {
+  userEmail: string
+  userName: string
+  planTier: string
+  expiryDate: Date
+  daysRemaining: number
+}
+
+export async function sendSubscriptionReminderEmail({
+  userEmail,
+  userName,
+  planTier,
+  expiryDate,
+  daysRemaining,
+}: SubscriptionReminderEmailParams) {
+  try {
+    const formattedDate = expiryDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+
+    const subject = `Your ${planTier} Plan Expires in ${daysRemaining} Days`
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #FCD34D; color: #000; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h2 style="margin: 0;">⏰ Subscription Expiring Soon</h2>
+        </div>
+        <div style="background: #FFFBEB; padding: 20px; border-radius: 0 0 8px 8px;">
+          <p>Hello ${userName},</p>
+          <p>Your <strong>${planTier}</strong> subscription plan will expire in <strong>${daysRemaining} days</strong> on <strong>${formattedDate}</strong>.</p>
+          
+          <div style="background: #FEFCE8; border-left: 4px solid #FCD34D; padding: 16px; margin: 20px 0; border-radius: 4px;">
+            <h3 style="margin: 0 0 12px 0; color: #854D0E;">Plan Details:</h3>
+            <ul style="margin: 0; padding-left: 20px; color: #854D0E;">
+              <li>Current Plan: <strong>${planTier}</strong></li>
+              <li>Expiry Date: <strong>${formattedDate}</strong></li>
+              <li>Days Remaining: <strong>${daysRemaining}</strong></li>
+            </ul>
+          </div>
+          
+          <div style="background: #ECFDF5; padding: 16px; border-radius: 4px; margin: 20px 0;">
+            <h3 style="margin: 0 0 12px 0; color: #065F46;">What Happens Next:</h3>
+            <p style="margin: 0 0 8px 0; color: #065F46;">When your subscription expires:</p>
+            <ul style="margin: 0; padding-left: 20px; color: #065F46;">
+              <li>Your plan will downgrade to the FREE tier</li>
+              <li>You'll lose access to premium features</li>
+              <li>Your active listings may be limited</li>
+            </ul>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:3000/dashboard/subscription" style="background: #FCD34D; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+              Renew Your Subscription
+            </a>
+          </div>
+          
+          <p>If you have any questions about your subscription, please contact our support team.</p>
+          <p style="margin-top: 20px; border-top: 1px solid #E5E7EB; padding-top: 20px; color: #6B7280; font-size: 12px;">
+            Best regards,<br>The Premium Realty Team
+          </p>
+        </div>
+      </div>
+    `
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM_ADDRESS,
+      to: userEmail,
+      subject,
+      html: htmlContent,
+    })
+
+    console.log(`Subscription reminder email sent to ${userEmail}`)
+  } catch (error) {
+    console.error('Error sending subscription reminder email:', error)
+  }
+}
+
 export async function sendSMS(phone: string, message: string) {
   try {
     // SMS integration would go here

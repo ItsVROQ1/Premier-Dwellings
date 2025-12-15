@@ -8,33 +8,38 @@ import { prisma } from '@/lib/prisma';
 import { formatCurrency, formatArea } from '@/lib/format';
 
 async function getFeaturedListings() {
-  const listings = await prisma.listing.findMany({
-    where: {
-      status: 'ACTIVE',
-      moderationStatus: 'approved',
-      isFeatured: true,
-    },
-    take: 6,
-    orderBy: {
-      createdAt: 'desc',
-    },
-    include: {
-      city: true,
-      images: {
-        where: { isMain: true },
-        take: 1,
+  try {
+    const listings = await prisma.listing.findMany({
+      where: {
+        status: 'ACTIVE',
+        moderationStatus: 'approved',
+        isFeatured: true,
       },
-      agent: {
-        select: {
-          firstName: true,
-          lastName: true,
-          isVerified: true,
+      take: 6,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        city: true,
+        images: {
+          where: { isMain: true },
+          take: 1,
+        },
+        agent: {
+          select: {
+            firstName: true,
+            lastName: true,
+            isVerified: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  return listings;
+    return listings;
+  } catch (error) {
+    console.error('Error fetching featured listings:', error);
+    return [];
+  }
 }
 
 export default async function Home() {

@@ -6,23 +6,28 @@ import { Calendar, User, FileText } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 
 async function getBlogPosts() {
-  return await prisma.blogPost.findMany({
-    where: {
-      isPublished: true,
-    },
-    orderBy: {
-      publishedAt: 'desc',
-    },
-    take: 12,
-    include: {
-      author: {
-        select: {
-          firstName: true,
-          lastName: true,
+  try {
+    return await prisma.blogPost.findMany({
+      where: {
+        isPublished: true,
+      },
+      orderBy: {
+        publishedAt: 'desc',
+      },
+      take: 12,
+      include: {
+        author: {
+          select: {
+            firstName: true,
+            lastName: true,
+          },
         },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error('Error fetching blog posts:', error);
+    return [];
+  }
 }
 
 export default async function BlogPage() {
