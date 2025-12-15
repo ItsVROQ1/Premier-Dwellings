@@ -206,10 +206,7 @@ model User {
   receivedMessages  ChatMessage[]    @relation("receiver")
   blogPosts         BlogPost[]
   analyticsEvents   AnalyticsEvent[]
-  subscriptions     Subscription[]
-  securityDeposits  SecurityDeposit[]
-  payPerListingTx   PayPerListingTransaction[]
-  userNotifications UserNotification[]
+  subscription      Subscription?
   
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
@@ -260,7 +257,7 @@ model Listing {
   
   // Pricing
   price             Decimal
-  currency          String           @default("USD")
+  currency          String           @default("PKR")
   pricePerUnit      Decimal?
   
   // Property Specifications
@@ -268,9 +265,16 @@ model Listing {
   bathrooms         Decimal
   totalArea         Decimal
   areaUnit          String           @default("sqft")
+  areaInMarla       Decimal?
   yearBuilt         Int?
   floorNumber       Int?
   totalFloors       Int?
+  
+  // Plot/Block Metadata
+  plotNumber        String?
+  blockNumber       String?
+  sector            String?
+  phase             String?
   
   // Features
   amenities         Amenity[]
@@ -289,6 +293,17 @@ model Listing {
   isFeatured        Boolean          @default(false)
   viewCount         Int              @default(0)
   favoriteCount     Int              @default(0)
+  
+  // Moderation
+  moderationStatus  String           @default("pending") // pending, approved, rejected
+  moderationFeedback String?
+  moderatedAt       DateTime?
+  moderatedBy       String?
+  
+  // Contact Info (optional override)
+  contactName       String?
+  contactEmail      String?
+  contactPhone      String?
   
   // Relationships
   favoritedBy       FavoritedListing[]
@@ -444,6 +459,27 @@ model Payment {
 // ============================================================================
 // SUBSCRIPTION & PLANS
 // ============================================================================
+
+model Subscription {
+  id                String           @id @default(cuid())
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String           @unique
+  
+  planTier          PlanTier
+  status            String           @default("active") // active, cancelled, expired
+  
+  listingsUsed      Int              @default(0)
+  listingsLimit     Int
+  
+  startDate         DateTime
+  endDate           DateTime
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+}
 
 model PlanTierConfig {
   id                String           @id @default(cuid())
