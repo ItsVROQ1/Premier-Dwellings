@@ -1,169 +1,181 @@
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { ShellMain, ShellContainer } from '@/components/layout/shell';
+import { Building2, MapPin, Bed, Bath, Maximize, CheckCircle } from 'lucide-react';
+import { prisma } from '@/lib/prisma';
+import { formatCurrency, formatArea } from '@/lib/format';
 
-export default function Home() {
+async function getFeaturedListings() {
+  const listings = await prisma.listing.findMany({
+    where: {
+      status: 'ACTIVE',
+      moderationStatus: 'approved',
+      isFeatured: true,
+    },
+    take: 6,
+    orderBy: {
+      createdAt: 'desc',
+    },
+    include: {
+      city: true,
+      images: {
+        where: { isMain: true },
+        take: 1,
+      },
+      agent: {
+        select: {
+          firstName: true,
+          lastName: true,
+          isVerified: true,
+        },
+      },
+    },
+  });
+
+  return listings;
+}
+
+export default async function Home() {
+  const featuredListings = await getFeaturedListings();
+
   return (
     <ShellMain>
-      <ShellContainer className="py-12">
-        <div className="space-y-12">
-          {/* Header */}
-          <section className="space-y-4">
-            <div className="space-y-2">
-              <h1 className="text-5xl font-bold tracking-tight text-foreground">
-                Premium Real Estate Platform
-              </h1>
-              <p className="text-xl text-slate-600 dark:text-slate-400">
-                Your one-stop marketplace for buying, selling, and renting properties
+      {/* Hero Section */}
+      <section className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <ShellContainer className="py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <h1 className="mb-6 text-5xl font-bold tracking-tight text-white md:text-6xl">
+              Find Your Dream Property in Pakistan
+            </h1>
+            <p className="mb-8 text-xl text-slate-300">
+              Discover premium homes, apartments, and commercial spaces across major cities
+            </p>
+            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Button size="lg" asChild>
+                <Link href="/properties">Explore Properties</Link>
+              </Button>
+              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10" asChild>
+                <Link href="/dashboard/listings/new">List Your Property</Link>
+              </Button>
+            </div>
+          </div>
+        </ShellContainer>
+      </section>
+
+      {/* Featured Properties */}
+      <section className="py-16">
+        <ShellContainer>
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Featured Properties</h2>
+              <p className="mt-2 text-slate-600 dark:text-slate-400">
+                Premium listings handpicked for you
               </p>
             </div>
-          </section>
+            <Button variant="outline" asChild>
+              <Link href="/properties">View All</Link>
+            </Button>
+          </div>
 
-          {/* Button Showcase */}
-          <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">Buttons</h2>
-            <div className="flex flex-wrap gap-4">
-              <Button variant="default">Primary Button</Button>
-              <Button variant="secondary">Secondary Button</Button>
-              <Button variant="outline">Outline Button</Button>
-              <Button variant="ghost">Ghost Button</Button>
-              <Button variant="destructive">Destructive Button</Button>
-              <Button variant="success">Success Button</Button>
-              <Button variant="default" size="sm">
-                Small
-              </Button>
-              <Button variant="default" size="lg">
-                Large
-              </Button>
-              <Button variant="default" size="icon">
-                +
-              </Button>
-              <Button disabled>Disabled</Button>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {featuredListings.map((listing) => {
+              const mainImage = listing.images[0];
+              return (
+                <Link key={listing.id} href={`/properties/${listing.slug}`}>
+                  <Card className="group overflow-hidden transition-shadow hover:shadow-lg">
+                    <div className="relative aspect-video w-full overflow-hidden bg-slate-200">
+                      {mainImage ? (
+                        <img
+                          src={mainImage.url}
+                          alt={mainImage.alt || listing.title}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <Building2 className="h-16 w-16 text-slate-400" />
+                        </div>
+                      )}
+                      <div className="absolute right-2 top-2">
+                        <Badge variant="default" className="bg-gold-500">
+                          {listing.transactionType}
+                        </Badge>
+                      </div>
+                      {listing.agent.isVerified && (
+                        <div className="absolute left-2 top-2">
+                          <Badge variant="success" className="flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Verified
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                    <CardHeader>
+                      <div className="mb-2 flex items-center text-sm text-slate-600 dark:text-slate-400">
+                        <MapPin className="mr-1 h-4 w-4" />
+                        {listing.city.name}
+                      </div>
+                      <CardTitle className="line-clamp-2">{listing.title}</CardTitle>
+                      <div className="mt-2 text-2xl font-bold text-gold-600">
+                        {formatCurrency(Number(listing.price), listing.currency)}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+                        <div className="flex items-center gap-1">
+                          <Bed className="h-4 w-4" />
+                          <span>{listing.bedrooms} Beds</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Bath className="h-4 w-4" />
+                          <span>{Number(listing.bathrooms)} Baths</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Maximize className="h-4 w-4" />
+                          <span>{formatArea(Number(listing.totalArea), listing.areaUnit)}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="border-t border-slate-200 dark:border-slate-700">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        {listing.propertyType.replace('_', ' ')}
+                      </p>
+                    </CardFooter>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+
+          {featuredListings.length === 0 && (
+            <div className="py-12 text-center">
+              <Building2 className="mx-auto h-16 w-16 text-slate-400" />
+              <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">
+                No properties available
+              </h3>
+              <p className="mt-2 text-slate-600 dark:text-slate-400">
+                Check back soon for new listings
+              </p>
             </div>
-          </section>
+          )}
+        </ShellContainer>
+      </section>
 
-          {/* Cards Showcase */}
-          <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">Cards</h2>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Card Title</CardTitle>
-                  <CardDescription>
-                    This is a card description that explains the purpose
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-slate-600 dark:text-slate-400">
-                    Card content goes here. You can add any content you need.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Feature Card</CardTitle>
-                  <CardDescription>Premium features and benefits</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-foreground">Benefits:</h4>
-                    <ul className="list-inside space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                      <li>✓ Fast and reliable</li>
-                      <li>✓ Secure transactions</li>
-                      <li>✓ Expert support</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </section>
-
-          {/* Inputs Showcase */}
-          <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">Inputs</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Input placeholder="Standard input" />
-              <Input placeholder="Disabled input" disabled />
-              <Input type="email" placeholder="Email input" />
-              <Input type="password" placeholder="Password input" />
-            </div>
-          </section>
-
-          {/* Skeletons Showcase */}
-          <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">Loading Skeletons</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-              <div className="space-y-3">
-                <Skeleton className="h-64 w-full" />
-              </div>
-            </div>
-          </section>
-
-          {/* Color Palette */}
-          <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">Color Palette</h2>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-              {[
-                { name: 'Gold 500', color: 'bg-gold-500' },
-                { name: 'Gold 600', color: 'bg-gold-600' },
-                { name: 'Slate 900', color: 'bg-slate-900' },
-                { name: 'Success', color: 'bg-success-600' },
-                { name: 'Danger', color: 'bg-danger-600' },
-                { name: 'Warning', color: 'bg-warning-500' },
-              ].map((item) => (
-                <div key={item.name} className="space-y-2">
-                  <div className={`${item.color} h-20 rounded-lg`} />
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                    {item.name}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Getting Started */}
-          <section className="space-y-4 border-t border-slate-200 pt-8 dark:border-slate-700">
-            <h2 className="text-2xl font-bold text-foreground">Getting Started</h2>
-            <Card>
-              <CardHeader>
-                <CardTitle>Next Steps</CardTitle>
-                <CardDescription>Your application is ready for development</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-foreground">Database Setup:</h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Run{' '}
-                    <code className="rounded bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800">
-                      pnpm prisma migrate dev
-                    </code>{' '}
-                    to set up your database
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-foreground">Seed Data:</h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Run{' '}
-                    <code className="rounded bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800">
-                      pnpm prisma db seed
-                    </code>{' '}
-                    to populate initial data
-                  </p>
-                </div>
-                <Button className="mt-4">Learn More</Button>
-              </CardContent>
-            </Card>
-          </section>
-        </div>
-      </ShellContainer>
+      {/* CTA Section */}
+      <section className="bg-gold-500 py-16">
+        <ShellContainer>
+          <div className="text-center">
+            <h2 className="mb-4 text-3xl font-bold text-white">Ready to Get Started?</h2>
+            <p className="mb-8 text-lg text-white/90">
+              Join thousands of users finding their perfect properties
+            </p>
+            <Button size="lg" variant="secondary" asChild>
+              <Link href="/auth/signup">Create Free Account</Link>
+            </Button>
+          </div>
+        </ShellContainer>
+      </section>
     </ShellMain>
   );
 }
