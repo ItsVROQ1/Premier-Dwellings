@@ -195,6 +195,7 @@ model City {
   
   listings          Listing[]
   plotOverlays      PlotOverlay[]
+  societyOverlays   SocietyOverlay[]
   
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
@@ -277,6 +278,7 @@ model Listing {
   offers            Offer[]
   plotOverlay       PlotOverlay?
   analyticsEvents   AnalyticsEvent[]
+  valuationSamples  ValuationSample[]
   
   // Status Timeline
   publishedAt       DateTime?
@@ -514,12 +516,16 @@ model Chat {
   id                String           @id @default(cuid())
   title             String?
   description       String?
+  listingId         String?
   
   participants      ChatParticipant[]
   messages          ChatMessage[]
+  aiMessages        AIChatMessage[]
   
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+  
+  @@index([listingId])
 }
 
 model ChatMessage {
@@ -648,4 +654,140 @@ model AnalyticsEvent {
   @@index([listingId])
   @@index([type])
   @@index([createdAt])
+}
+
+// ============================================================================
+// AI VALUATION & PRICE INDEX
+// ============================================================================
+
+model AreaPriceIndex {
+  id                String           @id @default(cuid())
+  
+  city              String
+  area              String           // Sector/phase/neighborhood
+  propertyType      PropertyType
+  
+  avgPricePerSqft   Decimal
+  medianPrice       Decimal
+  minPrice          Decimal
+  maxPrice          Decimal
+  currency          String           @default("PKR")
+  
+  sampleSize        Int              @default(0)
+  
+  month             Int              // 1-12
+  year              Int
+  
+  trend3Month       Decimal?         // Percentage change over 3 months
+  trend6Month       Decimal?         // Percentage change over 6 months
+  trend12Month      Decimal?         // Percentage change over 12 months
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([city, area, propertyType, month, year])
+  @@index([city, area])
+  @@index([year, month])
+}
+
+model ValuationSample {
+  id                String           @id @default(cuid())
+  
+  listing           Listing?         @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  listingId         String?
+  
+  city              String
+  area              String
+  propertyType      PropertyType
+  transactionType   TransactionType
+  
+  price             Decimal
+  pricePerSqft      Decimal
+  totalArea         Decimal
+  bedrooms          Int?
+  bathrooms         Decimal?
+  
+  latitude          Float?
+  longitude         Float?
+  
+  soldDate          DateTime?
+  listedDate        DateTime
+  
+  metadata          String?          // JSON for additional attributes
+  
+  createdAt         DateTime         @default(now())
+
+  @@index([city, area])
+  @@index([propertyType])
+  @@index([soldDate])
+  @@index([listingId])
+}
+
+// ============================================================================
+// AI CHAT ASSISTANT
+// ============================================================================
+
+enum AIChatRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model AIChatMessage {
+  id                String           @id @default(cuid())
+  chat              Chat             @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chatId            String
+  
+  role              AIChatRole
+  content           String
+  metadata          String?          // JSON for AI context, suggested listings, etc.
+  
+  isModerated       Boolean          @default(false)
+  moderationFlags   String[]
+  
+  createdAt         DateTime         @default(now())
+
+  @@index([chatId])
+  @@index([role])
+}
+
+model AIAssistantConfig {
+  id                String           @id @default(cuid())
+  userId            String           @unique
+  
+  enabled           Boolean          @default(true)
+  autoGreet         Boolean          @default(true)
+  suggestListings   Boolean          @default(true)
+  moderateContent   Boolean          @default(true)
+  
+  customGreeting    String?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([userId])
+}
+
+// ============================================================================
+// SOCIETY OVERLAYS (GeoJSON)
+// ============================================================================
+
+model SocietyOverlay {
+  id                String           @id @default(cuid())
+  
+  city              City             @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  cityId            String
+  
+  name              String           // Society name (e.g., "DHA Phase 5")
+  geoJsonData       String           // GeoJSON polygon/multipolygon
+  
+  metadata          String?          // JSON with additional data (developer, year, etc.)
+  
+  isActive          Boolean          @default(true)
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([cityId])
+  @@index([isActive])
 }

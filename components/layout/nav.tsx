@@ -7,10 +7,10 @@ import { Home, Building2, Users, FileText, Settings, LayoutDashboard } from 'luc
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/listings', label: 'My Listings', icon: Building2 },
   { href: '/properties', label: 'Properties', icon: Building2 },
   { href: '/projects', label: 'New Projects', icon: Building2 },
+  { href: '/plot-finder', label: 'Plot Finder', icon: Building2 },
+  { href: '/tools', label: 'Tools', icon: Settings },
   { href: '/blog', label: 'Blog', icon: FileText },
   { href: '/about', label: 'About', icon: Users },
 ];
@@ -72,6 +72,7 @@ export function DashboardNav() {
     { href: '/dashboard/listings/new', label: 'Create Listing' },
     { href: '/dashboard/inquiries', label: 'Inquiries' },
     { href: '/dashboard/favorites', label: 'Favorites' },
+    { href: '/dashboard/ai-settings', label: 'AI Assistant' },
     { href: '/dashboard/settings', label: 'Settings' },
   ];
 
