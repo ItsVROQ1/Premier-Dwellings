@@ -1,215 +1,181 @@
-'use client'
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { ShellMain, ShellContainer } from '@/components/layout/shell';
+import { Building2, MapPin, Bed, Bath, Maximize, CheckCircle } from 'lucide-react';
+import { prisma } from '@/lib/prisma';
+import { formatCurrency, formatArea } from '@/lib/format';
 
-import { useSession } from 'next-auth/react'
-import Link from 'next/link'
+async function getFeaturedListings() {
+  const listings = await prisma.listing.findMany({
+    where: {
+      status: 'ACTIVE',
+      moderationStatus: 'approved',
+      isFeatured: true,
+    },
+    take: 6,
+    orderBy: {
+      createdAt: 'desc',
+    },
+    include: {
+      city: true,
+      images: {
+        where: { isMain: true },
+        take: 1,
+      },
+      agent: {
+        select: {
+          firstName: true,
+          lastName: true,
+          isVerified: true,
+        },
+      },
+    },
+  });
 
-export default function HomePage() {
-  const { data: session, status } = useSession()
+  return listings;
+}
 
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
-      </div>
-    )
-  }
-
-  if (session) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex items-center">
-                <h1 className="text-xl font-bold text-gray-900">Auth System</h1>
-              </div>
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-700">Welcome, {session.user.name || session.user.email}</span>
-                <Link
-                  href="/dashboard"
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/profile"
-                  className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Profile
-                </Link>
-                <Link
-                  href="/verify"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${
-                    session.user.isVerified
-                      ? 'text-green-600'
-                      : 'text-red-600'
-                  }`}
-                >
-                  {session.user.isVerified ? '✓ Verified' : '⚠ Verification Required'}
-                </Link>
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h2 className="text-3xl font-extrabold text-gray-900">Dashboard</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              You are logged in as {session.user.email}
-            </p>
-          </div>
-
-          <div className="mt-10">
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Account Status</dt>
-                        <dd className="text-lg font-medium text-gray-900">
-                          {session.user.isVerified ? 'Verified' : 'Unverified'}
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-gray-50 px-5 py-3">
-                  <div className="text-sm">
-                    <Link
-                      href="/verify"
-                      className="font-medium text-indigo-700 hover:text-indigo-900"
-                    >
-                      {session.user.isVerified ? 'View Details' : 'Complete Verification'}
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Role</dt>
-                        <dd className="text-lg font-medium text-gray-900 capitalize">
-                          {session.user.role.toLowerCase()}
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-gray-50 px-5 py-3">
-                  <div className="text-sm">
-                    <Link
-                      href="/profile"
-                      className="font-medium text-indigo-700 hover:text-indigo-900"
-                    >
-                      Edit Profile
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Account Type</dt>
-                        <dd className="text-lg font-medium text-gray-900">
-                          {session.user.isPremium ? 'Premium' : 'Standard'}
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-gray-50 px-5 py-3">
-                  <div className="text-sm">
-                    <button className="font-medium text-indigo-700 hover:text-indigo-900">
-                      Upgrade (Coming Soon)
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+export default async function Home() {
+  const featuredListings = await getFeaturedListings();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">Auth System</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/login"
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-              >
-                Get Started
-              </Link>
+    <ShellMain>
+      {/* Hero Section */}
+      <section className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <ShellContainer className="py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <h1 className="mb-6 text-5xl font-bold tracking-tight text-white md:text-6xl">
+              Find Your Dream Property in Pakistan
+            </h1>
+            <p className="mb-8 text-xl text-slate-300">
+              Discover premium homes, apartments, and commercial spaces across major cities
+            </p>
+            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Button size="lg" asChild>
+                <Link href="/properties">Explore Properties</Link>
+              </Button>
+              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10" asChild>
+                <Link href="/dashboard/listings/new">List Your Property</Link>
+              </Button>
             </div>
           </div>
-        </div>
-      </nav>
+        </ShellContainer>
+      </section>
 
-      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
-            <span className="block">Secure Authentication &</span>
-            <span className="block text-indigo-600">ID Verification System</span>
-          </h1>
-          <p className="mt-3 max-w-md mx-auto text-base text-gray-500 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-            Complete authentication system with NextAuth, secure ID verification, and role-based access control.
-          </p>
-          <div className="mt-5 max-w-md mx-auto sm:flex sm:justify-center md:mt-8">
-            <div className="rounded-md shadow">
-              <Link
-                href="/register"
-                className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 md:py-4 md:text-lg md:px-10"
-              >
-                Get Started
-              </Link>
+      {/* Featured Properties */}
+      <section className="py-16">
+        <ShellContainer>
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Featured Properties</h2>
+              <p className="mt-2 text-slate-600 dark:text-slate-400">
+                Premium listings handpicked for you
+              </p>
             </div>
-            <div className="mt-3 rounded-md shadow sm:mt-0 sm:ml-3">
-              <Link
-                href="/login"
-                className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-indigo-600 bg-white hover:bg-gray-50 md:py-4 md:text-lg md:px-10"
-              >
-                Sign In
-              </Link>
-            </div>
+            <Button variant="outline" asChild>
+              <Link href="/properties">View All</Link>
+            </Button>
           </div>
-        </div>
-      </div>
-    </div>
-  )
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {featuredListings.map((listing) => {
+              const mainImage = listing.images[0];
+              return (
+                <Link key={listing.id} href={`/properties/${listing.slug}`}>
+                  <Card className="group overflow-hidden transition-shadow hover:shadow-lg">
+                    <div className="relative aspect-video w-full overflow-hidden bg-slate-200">
+                      {mainImage ? (
+                        <img
+                          src={mainImage.url}
+                          alt={mainImage.alt || listing.title}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <Building2 className="h-16 w-16 text-slate-400" />
+                        </div>
+                      )}
+                      <div className="absolute right-2 top-2">
+                        <Badge variant="default" className="bg-gold-500">
+                          {listing.transactionType}
+                        </Badge>
+                      </div>
+                      {listing.agent.isVerified && (
+                        <div className="absolute left-2 top-2">
+                          <Badge variant="success" className="flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Verified
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                    <CardHeader>
+                      <div className="mb-2 flex items-center text-sm text-slate-600 dark:text-slate-400">
+                        <MapPin className="mr-1 h-4 w-4" />
+                        {listing.city.name}
+                      </div>
+                      <CardTitle className="line-clamp-2">{listing.title}</CardTitle>
+                      <div className="mt-2 text-2xl font-bold text-gold-600">
+                        {formatCurrency(Number(listing.price), listing.currency)}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+                        <div className="flex items-center gap-1">
+                          <Bed className="h-4 w-4" />
+                          <span>{listing.bedrooms} Beds</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Bath className="h-4 w-4" />
+                          <span>{Number(listing.bathrooms)} Baths</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Maximize className="h-4 w-4" />
+                          <span>{formatArea(Number(listing.totalArea), listing.areaUnit)}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="border-t border-slate-200 dark:border-slate-700">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        {listing.propertyType.replace('_', ' ')}
+                      </p>
+                    </CardFooter>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+
+          {featuredListings.length === 0 && (
+            <div className="py-12 text-center">
+              <Building2 className="mx-auto h-16 w-16 text-slate-400" />
+              <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">
+                No properties available
+              </h3>
+              <p className="mt-2 text-slate-600 dark:text-slate-400">
+                Check back soon for new listings
+              </p>
+            </div>
+          )}
+        </ShellContainer>
+      </section>
+
+      {/* CTA Section */}
+      <section className="bg-gold-500 py-16">
+        <ShellContainer>
+          <div className="text-center">
+            <h2 className="mb-4 text-3xl font-bold text-white">Ready to Get Started?</h2>
+            <p className="mb-8 text-lg text-white/90">
+              Join thousands of users finding their perfect properties
+            </p>
+            <Button size="lg" variant="secondary" asChild>
+              <Link href="/auth/signup">Create Free Account</Link>
+            </Button>
+          </div>
+        </ShellContainer>
+      </section>
+    </ShellMain>
+  );
 }
