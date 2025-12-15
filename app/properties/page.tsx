@@ -18,75 +18,85 @@ async function getProperties(searchParams: {
   transactionType?: string;
   search?: string;
 }) {
-  const where: any = {
-    status: 'ACTIVE',
-    moderationStatus: 'approved',
-  };
+  try {
+    const where: any = {
+      status: 'ACTIVE',
+      moderationStatus: 'approved',
+    };
 
-  if (searchParams.city) {
-    where.cityId = searchParams.city;
-  }
-
-  if (searchParams.propertyType) {
-    where.propertyType = searchParams.propertyType;
-  }
-
-  if (searchParams.transactionType) {
-    where.transactionType = searchParams.transactionType;
-  }
-
-  if (searchParams.bedrooms) {
-    where.bedrooms = parseInt(searchParams.bedrooms);
-  }
-
-  if (searchParams.minPrice || searchParams.maxPrice) {
-    where.price = {};
-    if (searchParams.minPrice) {
-      where.price.gte = parseFloat(searchParams.minPrice);
+    if (searchParams.city) {
+      where.cityId = searchParams.city;
     }
-    if (searchParams.maxPrice) {
-      where.price.lte = parseFloat(searchParams.maxPrice);
+
+    if (searchParams.propertyType) {
+      where.propertyType = searchParams.propertyType;
     }
-  }
 
-  if (searchParams.search) {
-    where.OR = [
-      { title: { contains: searchParams.search, mode: 'insensitive' } },
-      { description: { contains: searchParams.search, mode: 'insensitive' } },
-      { plotNumber: { contains: searchParams.search, mode: 'insensitive' } },
-    ];
-  }
+    if (searchParams.transactionType) {
+      where.transactionType = searchParams.transactionType;
+    }
 
-  const listings = await prisma.listing.findMany({
-    where,
-    take: 24,
-    orderBy: {
-      createdAt: 'desc',
-    },
-    include: {
-      city: true,
-      images: {
-        where: { isMain: true },
-        take: 1,
+    if (searchParams.bedrooms) {
+      where.bedrooms = parseInt(searchParams.bedrooms);
+    }
+
+    if (searchParams.minPrice || searchParams.maxPrice) {
+      where.price = {};
+      if (searchParams.minPrice) {
+        where.price.gte = parseFloat(searchParams.minPrice);
+      }
+      if (searchParams.maxPrice) {
+        where.price.lte = parseFloat(searchParams.maxPrice);
+      }
+    }
+
+    if (searchParams.search) {
+      where.OR = [
+        { title: { contains: searchParams.search, mode: 'insensitive' } },
+        { description: { contains: searchParams.search, mode: 'insensitive' } },
+        { plotNumber: { contains: searchParams.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const listings = await prisma.listing.findMany({
+      where,
+      take: 24,
+      orderBy: {
+        createdAt: 'desc',
       },
-      agent: {
-        select: {
-          firstName: true,
-          lastName: true,
-          isVerified: true,
+      include: {
+        city: true,
+        images: {
+          where: { isMain: true },
+          take: 1,
+        },
+        agent: {
+          select: {
+            firstName: true,
+            lastName: true,
+            isVerified: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  return listings;
+    return listings;
+  } catch (error) {
+    console.error('Error fetching properties:', error);
+    return [];
+  }
 }
 
 async function getCities() {
-  return await prisma.city.findMany({
-    where: { isActive: true },
-    orderBy: { name: 'asc' },
-  });
+  try {
+    return await prisma.city.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+    });
+  } catch (error) {
+    console.error('Error fetching cities:', error);
+    return [];
+  }
 }
 
 export default async function PropertiesPage({
