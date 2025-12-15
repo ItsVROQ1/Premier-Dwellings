@@ -62,9 +62,29 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
     notFound();
   }
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.excerpt || post.title,
+    image: post.featuredImage,
+    datePublished: post.publishedAt?.toISOString(),
+    dateModified: post.updatedAt.toISOString(),
+    author: {
+      '@type': 'Person',
+      name: `${post.author.firstName} ${post.author.lastName}`,
+    },
+    keywords: post.tags.join(', '),
+  };
+
   return (
-    <ShellMain>
-      <ShellContainer className="py-16">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ShellMain>
+        <ShellContainer className="py-16">
         <article className="mx-auto max-w-3xl">
           {post.featuredImage && (
             <div className="mb-8 aspect-video w-full overflow-hidden rounded-lg">
@@ -115,5 +135,6 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         </article>
       </ShellContainer>
     </ShellMain>
+    </>
   );
 }

@@ -4,6 +4,7 @@ import './globals.css';
 import { Shell } from '@/components/layout/shell';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
+import { generateOrganizationSchema } from '@/lib/seo-helpers';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -35,8 +36,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const organizationSchema = generateOrganizationSchema();
+
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <div className="flex min-h-screen flex-col">
           <Header />

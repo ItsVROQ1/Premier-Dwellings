@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShellMain, ShellContainer } from '@/components/layout/shell';
+import { ValuationWidget } from '@/components/valuation/valuation-widget';
 import {
   MapPin,
   Bed,
@@ -283,21 +284,22 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
                 </Card>
               )}
 
-              {/* AI Valuation Placeholder */}
-              <Card className="mb-6 border-dashed">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-gold-600" />
-                    AI Property Valuation
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-slate-600 dark:text-slate-400">
-                    Advanced AI-powered property valuation coming soon. Get instant market insights
-                    and price predictions.
-                  </p>
-                </CardContent>
-              </Card>
+              {/* AI Valuation Widget */}
+              <div className="mb-6">
+                <ValuationWidget
+                  listingId={listing.id}
+                  propertyType={listing.propertyType}
+                  transactionType={listing.transactionType}
+                  city={listing.city.name}
+                  area={listing.sector || listing.phase}
+                  totalArea={Number(listing.totalArea)}
+                  bedrooms={listing.bedrooms}
+                  bathrooms={Number(listing.bathrooms)}
+                  latitude={listing.latitude ?? undefined}
+                  longitude={listing.longitude ?? undefined}
+                  address={`${listing.streetAddress}, ${listing.city.name}`}
+                />
+              </div>
             </div>
 
             {/* Sidebar */}
