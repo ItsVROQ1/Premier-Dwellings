@@ -1,66 +1,58 @@
-import { z } from 'zod';
-
-export const resetPasswordSchema = z.object({
-  token: z.string().optional(),
-  email: z.string().email('Invalid email address').optional(),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number'),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+import { z } from 'zod'
 
 export const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
-});
-
-export type LoginInput = z.infer<typeof loginSchema>;
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+})
 
 export const registerSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
+  role: z.enum(['BUYER', 'AGENT']),
+  phone: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
-});
-
-export type RegisterInput = z.infer<typeof registerSchema>;
+})
 
 export const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email address'),
-});
+})
 
-export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export const resetPasswordSchema = z.object({
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+})
 
-export const createListingSchema = z.object({
-  title: z.string().min(5, 'Title must be at least 5 characters'),
-  description: z.string().min(10, 'Description must be at least 10 characters'),
-  propertyType: z.enum(['APARTMENT', 'HOUSE', 'CONDO', 'TOWNHOUSE', 'VILLA', 'LAND', 'COMMERCIAL', 'INDUSTRIAL']),
-  transactionType: z.enum(['SALE', 'RENTAL']),
-  price: z.number().positive('Price must be positive'),
-  currency: z.string().default('USD'),
-  bedrooms: z.number().int().min(0),
-  bathrooms: z.number().min(0),
-  totalArea: z.number().positive('Area must be positive'),
-  areaUnit: z.string().default('sqft'),
-  streetAddress: z.string().min(5, 'Street address is required'),
-  cityId: z.string(),
-});
+export const profileSchema = z.object({
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  bio: z.string().max(500, 'Bio must be less than 500 characters').optional(),
+  location: z.string().optional(),
+  website: z.string().url('Invalid URL').optional().or(z.literal('')),
+  facebook: z.string().url('Invalid URL').optional().or(z.literal('')),
+  instagram: z.string().url('Invalid URL').optional().or(z.literal('')),
+  twitter: z.string().url('Invalid URL').optional().or(z.literal('')),
+  linkedin: z.string().url('Invalid URL').optional().or(z.literal('')),
+})
 
-export type CreateListingInput = z.infer<typeof createListingSchema>;
+export const idVerificationSchema = z.object({
+  documentType: z.enum(['CNIC', 'PASSPORT', 'DRIVING_LICENSE', 'OTHER_ID']),
+  cnic: z.string().optional(),
+  frontImage: z.string().min(1, 'Front image is required'),
+  backImage: z.string().optional(),
+  governmentId: z.string().optional(),
+})
+
+export const onboardingSchema = z.object({
+  role: z.enum(['BUYER', 'AGENT']),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  phone: z.string().min(1, 'Phone number is required'),
+  cnic: z.string().min(1, 'CNIC is required'),
+})

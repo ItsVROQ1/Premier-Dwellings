@@ -1,4 +1,4 @@
-import { PrismaClient, PlanTier, AmenityCategory } from '@prisma/client';
+import { PrismaClient, PlanTier, AmenityCategory, BillingPeriod } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -17,8 +17,10 @@ async function main() {
         tier: PlanTier.FREE,
         name: 'Free',
         description: 'Get started with basic features',
-        price: 0,
+        monthlyPrice: 0,
+        yearlyPrice: 0,
         maxListings: 1,
+        maxFeaturedListings: 0,
         hasAnalytics: false,
         hasPromotion: false,
         hasPriority: false,
@@ -26,10 +28,12 @@ async function main() {
       },
       {
         tier: PlanTier.STARTER,
-        name: 'Starter',
+        name: 'Silver',
         description: 'Perfect for new agents',
-        price: 29.99,
+        monthlyPrice: 5000, // PKR 5000/month
+        yearlyPrice: 50000, // PKR 50000/year
         maxListings: 10,
+        maxFeaturedListings: 2,
         hasAnalytics: true,
         hasPromotion: false,
         hasPriority: false,
@@ -37,15 +41,17 @@ async function main() {
           'Up to 10 listings',
           'Basic analytics',
           'Email & phone support',
-          'Featured listings',
+          '2 featured listings',
         ],
       },
       {
         tier: PlanTier.PROFESSIONAL,
-        name: 'Professional',
+        name: 'Gold',
         description: 'For active agents',
-        price: 79.99,
+        monthlyPrice: 15000, // PKR 15000/month
+        yearlyPrice: 150000, // PKR 150000/year
         maxListings: 50,
+        maxFeaturedListings: 10,
         hasAnalytics: true,
         hasPromotion: true,
         hasPriority: false,
@@ -55,14 +61,17 @@ async function main() {
           'Promotion tools',
           'Priority support',
           'Virtual tours',
+          '10 featured listings',
         ],
       },
       {
         tier: PlanTier.PREMIUM,
         name: 'Premium',
         description: 'Enterprise solution',
-        price: 199.99,
-        maxListings: -1,
+        monthlyPrice: 50000, // PKR 50000/month
+        yearlyPrice: 500000, // PKR 500000/year
+        maxListings: -1, // Unlimited
+        maxFeaturedListings: -1, // Unlimited
         hasAnalytics: true,
         hasPromotion: true,
         hasPriority: true,
@@ -74,6 +83,8 @@ async function main() {
           'Virtual tours',
           'Team management',
           'Custom branding',
+          'Unlimited featured listings',
+          'Premium blue tick',
         ],
       },
     ];
@@ -334,6 +345,65 @@ async function main() {
     });
 
     console.log('✅ Demo users seeded');
+
+    // ========================================================================
+    // SEED SUBSCRIPTIONS
+    // ========================================================================
+    console.log('📅 Seeding subscriptions...');
+
+    const adminUser = await prisma.user.findUnique({
+      where: { email: 'admin@example.com' },
+    });
+
+    if (adminUser) {
+      await prisma.subscription.upsert({
+        where: { userId: adminUser.id },
+        update: {},
+        create: {
+          userId: adminUser.id,
+          tier: PlanTier.PREMIUM,
+          billingPeriod: 'YEARLY',
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          isActive: true,
+          autoRenew: true,
+        },
+      });
+    }
+
+    if (agentUser1) {
+      await prisma.subscription.upsert({
+        where: { userId: agentUser1.id },
+        update: {},
+        create: {
+          userId: agentUser1.id,
+          tier: PlanTier.PROFESSIONAL,
+          billingPeriod: 'MONTHLY',
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          isActive: true,
+          autoRenew: true,
+        },
+      });
+    }
+
+    if (agentUser2) {
+      await prisma.subscription.upsert({
+        where: { userId: agentUser2.id },
+        update: {},
+        create: {
+          userId: agentUser2.id,
+          tier: PlanTier.STARTER,
+          billingPeriod: 'MONTHLY',
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          isActive: true,
+          autoRenew: true,
+        },
+      });
+    }
+
+    console.log('✅ Subscriptions seeded');
 
     // ========================================================================
     // SEED SAMPLE LISTINGS
