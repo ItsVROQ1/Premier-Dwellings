@@ -1,0 +1,611 @@
+// This is your Prisma schema file for the Premium Real Estate Platform
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  BUYER
+  AGENT
+  ADMIN
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  PENDING
+  SOLD
+  RENTED
+  EXPIRED
+  ARCHIVED
+}
+
+enum PropertyType {
+  APARTMENT
+  HOUSE
+  CONDO
+  TOWNHOUSE
+  VILLA
+  LAND
+  COMMERCIAL
+  INDUSTRIAL
+}
+
+enum TransactionType {
+  SALE
+  RENTAL
+}
+
+enum PlanTier {
+  FREE
+  STARTER
+  PROFESSIONAL
+  PREMIUM
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum VerificationType {
+  EMAIL
+  PHONE
+  IDENTITY
+  BANK_ACCOUNT
+  PROPERTY_DOCUMENT
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ChatMessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+enum NotificationType {
+  LISTING_INQUIRY
+  OFFER_RECEIVED
+  OFFER_ACCEPTED
+  OFFER_REJECTED
+  VIEWING_SCHEDULED
+  VIEWING_COMPLETED
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  VERIFICATION_APPROVED
+  VERIFICATION_REJECTED
+  MESSAGE_RECEIVED
+}
+
+enum AmenityCategory {
+  INTERIOR
+  EXTERIOR
+  UTILITIES
+  SECURITY
+  ENTERTAINMENT
+  PARKING
+}
+
+enum AnalyticsEventType {
+  PAGE_VIEW
+  LISTING_VIEW
+  LISTING_FAVORITE
+  LISTING_INQUIRY
+  AGENT_CONTACT
+  OFFER_SUBMIT
+  OFFER_ACCEPT
+  TRANSACTION_COMPLETE
+}
+
+// ============================================================================
+// CORE MODELS
+// ============================================================================
+
+model User {
+  id                String           @id @default(cuid())
+  email             String           @unique
+  password          String
+  firstName         String?
+  lastName          String?
+  phone             String?
+  role              UserRole         @default(BUYER)
+  avatar            String?
+  bio               String?
+  
+  // Contact Information
+  contactEmail      String?
+  contactPhone      String?
+  website           String?
+  company           String?
+  
+  // Address
+  streetAddress     String?
+  city              String?
+  state             String?
+  postalCode        String?
+  country           String?
+  
+  // Verification & Status
+  isVerified        Boolean          @default(false)
+  isActive          Boolean          @default(true)
+  emailVerified     DateTime?
+  phoneVerified     DateTime?
+  
+  // Agent specific
+  licenseNumber     String?
+  licenseExpiry     DateTime?
+  
+  // Subscription
+  currentPlan       PlanTier         @default(FREE)
+  planStartDate     DateTime?
+  planEndDate       DateTime?
+  
+  // Relations
+  listings          Listing[]
+  favoritedListings FavoritedListing[]
+  inquiries         ListingInquiry[]
+  offers            Offer[]
+  payments          Payment[]
+  verifications     Verification[]
+  chatParticipants  ChatParticipant[]
+  sentMessages      ChatMessage[]    @relation("sender")
+  receivedMessages  ChatMessage[]    @relation("receiver")
+  blogPosts         BlogPost[]
+  analyticsEvents   AnalyticsEvent[]
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([email])
+  @@index([role])
+  @@index([currentPlan])
+}
+
+model City {
+  id                String           @id @default(cuid())
+  name              String           @unique
+  state             String
+  country           String
+  latitude          Float?
+  longitude         Float?
+  description       String?
+  image             String?
+  isActive          Boolean          @default(true)
+  
+  listings          Listing[]
+  plotOverlays      PlotOverlay[]
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([state])
+  @@index([isActive])
+}
+
+model Listing {
+  id                String           @id @default(cuid())
+  title             String
+  description       String
+  slug              String           @unique
+  
+  // Property Details
+  propertyType      PropertyType
+  status            ListingStatus    @default(DRAFT)
+  transactionType   TransactionType
+  
+  // Location
+  city              City             @relation(fields: [cityId], references: [id])
+  cityId            String
+  streetAddress     String
+  latitude          Float?
+  longitude         Float?
+  
+  // Pricing
+  price             Decimal
+  currency          String           @default("USD")
+  pricePerUnit      Decimal?
+  
+  // Property Specifications
+  bedrooms          Int
+  bathrooms         Decimal
+  totalArea         Decimal
+  areaUnit          String           @default("sqft")
+  yearBuilt         Int?
+  floorNumber       Int?
+  totalFloors       Int?
+  
+  // Features
+  amenities         Amenity[]
+  features          String[]
+  
+  // Images & Media
+  images            ListingImage[]
+  videoUrl          String?
+  virtualTourUrl    String?
+  
+  // Agent Information
+  agent             User             @relation(fields: [agentId], references: [id])
+  agentId           String
+  
+  // SEO & Visibility
+  isFeatured        Boolean          @default(false)
+  viewCount         Int              @default(0)
+  favoriteCount     Int              @default(0)
+  
+  // Relationships
+  favoritedBy       FavoritedListing[]
+  inquiries         ListingInquiry[]
+  offers            Offer[]
+  plotOverlay       PlotOverlay?
+  analyticsEvents   AnalyticsEvent[]
+  
+  // Status Timeline
+  publishedAt       DateTime?
+  expiresAt         DateTime?
+  soldAt            DateTime?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([agentId])
+  @@index([cityId])
+  @@index([status])
+  @@index([transactionType])
+  @@index([isFeatured])
+}
+
+model ListingImage {
+  id                String           @id @default(cuid())
+  listing           Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId         String
+  url               String
+  alt               String?
+  order             Int              @default(0)
+  isMain            Boolean          @default(false)
+  
+  createdAt         DateTime         @default(now())
+
+  @@index([listingId])
+}
+
+model Amenity {
+  id                String           @id @default(cuid())
+  name              String           @unique
+  category          AmenityCategory
+  icon              String?
+  description       String?
+  
+  listings          Listing[]
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([category])
+}
+
+model FavoritedListing {
+  id                String           @id @default(cuid())
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  listing           Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId         String
+  
+  createdAt         DateTime         @default(now())
+
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+}
+
+model ListingInquiry {
+  id                String           @id @default(cuid())
+  listing           Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId         String
+  inquirer          User             @relation(fields: [inquirerId], references: [id], onDelete: Cascade)
+  inquirerId        String
+  
+  message           String
+  phone             String?
+  email             String?
+  preferredContact  String           @default("email")
+  
+  isRead            Boolean          @default(false)
+  respondedAt       DateTime?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([listingId])
+  @@index([inquirerId])
+  @@index([isRead])
+}
+
+// ============================================================================
+// OFFERS & TRANSACTIONS
+// ============================================================================
+
+model Offer {
+  id                String           @id @default(cuid())
+  listing           Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId         String
+  offerer           User             @relation(fields: [offererId], references: [id], onDelete: Cascade)
+  offererId         String
+  
+  amount            Decimal
+  currency          String           @default("USD")
+  message           String?
+  
+  status            PaymentStatus    @default(PENDING)
+  expiresAt         DateTime
+  
+  acceptedAt        DateTime?
+  rejectedAt        DateTime?
+  rejectionReason   String?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([listingId])
+  @@index([offererId])
+  @@index([status])
+}
+
+model Payment {
+  id                String           @id @default(cuid())
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  
+  amount            Decimal
+  currency          String           @default("USD")
+  status            PaymentStatus    @default(PENDING)
+  
+  paymentMethod     String?
+  transactionId     String?
+  
+  description       String?
+  metadata          String?
+  
+  processedAt       DateTime?
+  failureReason     String?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ============================================================================
+// SUBSCRIPTION & PLANS
+// ============================================================================
+
+model PlanTierConfig {
+  id                String           @id @default(cuid())
+  tier              PlanTier         @unique
+  
+  name              String
+  description       String?
+  price             Decimal
+  currency          String           @default("USD")
+  billingPeriod     Int              @default(30)
+  
+  // Features
+  maxListings       Int              @default(0)
+  hasAnalytics      Boolean          @default(false)
+  hasPromotion      Boolean          @default(false)
+  hasPriority       Boolean          @default(false)
+  features          String[]
+  
+  isActive          Boolean          @default(true)
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+// ============================================================================
+// VERIFICATION
+// ============================================================================
+
+model Verification {
+  id                String           @id @default(cuid())
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  
+  type              VerificationType
+  status            VerificationStatus @default(PENDING)
+  
+  documentUrl       String?
+  expiresAt         DateTime?
+  
+  submittedAt       DateTime
+  verifiedAt        DateTime?
+  rejectedReason    String?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+}
+
+// ============================================================================
+// MESSAGING
+// ============================================================================
+
+model ChatParticipant {
+  id                String           @id @default(cuid())
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  chat              Chat             @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chatId            String
+  
+  lastReadAt        DateTime?
+  unreadCount       Int              @default(0)
+  
+  joinedAt          DateTime         @default(now())
+
+  @@unique([userId, chatId])
+  @@index([userId])
+  @@index([chatId])
+}
+
+model Chat {
+  id                String           @id @default(cuid())
+  title             String?
+  description       String?
+  
+  participants      ChatParticipant[]
+  messages          ChatMessage[]
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model ChatMessage {
+  id                String           @id @default(cuid())
+  chat              Chat             @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chatId            String
+  
+  sender            User             @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId          String
+  
+  receiver          User?            @relation("receiver", fields: [receiverId], references: [id], onDelete: SetNull)
+  receiverId        String?
+  
+  type              ChatMessageType  @default(TEXT)
+  content           String
+  mediaUrl          String?
+  
+  isRead            Boolean          @default(false)
+  readAt            DateTime?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([chatId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([isRead])
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+model Notification {
+  id                String           @id @default(cuid())
+  
+  type              NotificationType
+  title             String
+  message           String
+  data              String?
+  
+  isRead            Boolean          @default(false)
+  readAt            DateTime?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+// ============================================================================
+// CONTENT
+// ============================================================================
+
+model BlogPost {
+  id                String           @id @default(cuid())
+  title             String
+  slug              String           @unique
+  content           String
+  excerpt           String?
+  
+  author            User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId          String
+  
+  featuredImage     String?
+  isPublished       Boolean          @default(false)
+  publishedAt       DateTime?
+  
+  viewCount         Int              @default(0)
+  tags              String[]
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([authorId])
+  @@index([isPublished])
+  @@index([slug])
+}
+
+// ============================================================================
+// PROPERTY OVERLAYS & MAPPING
+// ============================================================================
+
+model PlotOverlay {
+  id                String           @id @default(cuid())
+  listing           Listing?         @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  listingId         String?          @unique
+  
+  city              City             @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  cityId            String
+  
+  polygonCoordinates String
+  area              Decimal?
+  areaUnit          String?
+  
+  mappingData       String?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([cityId])
+  @@index([listingId])
+}
+
+// ============================================================================
+// ANALYTICS
+// ============================================================================
+
+model AnalyticsEvent {
+  id                String           @id @default(cuid())
+  
+  type              AnalyticsEventType
+  user              User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId            String?
+  
+  listing           Listing?         @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  listingId         String?
+  
+  sessionId         String?
+  ipAddress         String?
+  userAgent         String?
+  
+  properties        String?
+  
+  createdAt         DateTime         @default(now())
+
+  @@index([userId])
+  @@index([listingId])
+  @@index([type])
+  @@index([createdAt])
+}
