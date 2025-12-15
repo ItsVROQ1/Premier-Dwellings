@@ -95,6 +95,33 @@ enum NotificationType {
   VERIFICATION_APPROVED
   VERIFICATION_REJECTED
   MESSAGE_RECEIVED
+  CHAT_MESSAGE
+  LISTING_APPROVED
+  LISTING_REJECTED
+  PLAN_EXPIRY_REMINDER
+  SUBSCRIPTION_RENEWED
+  SECURITY_DEPOSIT_APPROVED
+  SECURITY_DEPOSIT_REJECTED
+  PREMIUM_LICENSE_APPROVED
+}
+
+enum BillingPeriod {
+  MONTHLY
+  YEARLY
+}
+
+enum SecurityDepositStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  JAZZCASH
+  EASYPAISA
+  STRIPE
+  BANK_TRANSFER
 }
 
 enum AmenityCategory {
@@ -154,11 +181,18 @@ model User {
   // Agent specific
   licenseNumber     String?
   licenseExpiry     DateTime?
+  isPremiumLicense  Boolean          @default(false)
+  premiumTick       Boolean          @default(false)
   
   // Subscription
   currentPlan       PlanTier         @default(FREE)
   planStartDate     DateTime?
   planEndDate       DateTime?
+  
+  // Notification preferences
+  emailNotifications Boolean          @default(true)
+  smsNotifications  Boolean          @default(false)
+  phoneNumber       String?
   
   // Relations
   listings          Listing[]
@@ -172,6 +206,10 @@ model User {
   receivedMessages  ChatMessage[]    @relation("receiver")
   blogPosts         BlogPost[]
   analyticsEvents   AnalyticsEvent[]
+  subscriptions     Subscription[]
+  securityDeposits  SecurityDeposit[]
+  payPerListingTx   PayPerListingTransaction[]
+  userNotifications UserNotification[]
   
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
@@ -376,23 +414,31 @@ model Payment {
   userId            String
   
   amount            Decimal
-  currency          String           @default("USD")
+  currency          String           @default("PKR")
   status            PaymentStatus    @default(PENDING)
   
-  paymentMethod     String?
+  paymentMethod     PaymentMethod?
   transactionId     String?
   
   description       String?
   metadata          String?
   
+  invoiceNumber     String?
+  
   processedAt       DateTime?
   failureReason     String?
+  
+  // Provider-specific references
+  jazzcashRefId     String?
+  easypaiaRefId     String?
+  stripePaymentId   String?
   
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
   @@index([userId])
   @@index([status])
+  @@index([transactionId])
 }
 
 // ============================================================================
@@ -405,12 +451,13 @@ model PlanTierConfig {
   
   name              String
   description       String?
-  price             Decimal
-  currency          String           @default("USD")
-  billingPeriod     Int              @default(30)
+  monthlyPrice      Decimal
+  yearlyPrice       Decimal?
+  currency          String           @default("PKR")
   
   // Features
   maxListings       Int              @default(0)
+  maxFeaturedListings Int            @default(0)
   hasAnalytics      Boolean          @default(false)
   hasPromotion      Boolean          @default(false)
   hasPriority       Boolean          @default(false)
@@ -420,6 +467,97 @@ model PlanTierConfig {
   
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+}
+
+model Subscription {
+  id                String           @id @default(cuid())
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String           @unique
+  
+  tier              PlanTier
+  billingPeriod     BillingPeriod
+  
+  startDate         DateTime
+  endDate           DateTime
+  renewalDate       DateTime?
+  
+  isActive          Boolean          @default(true)
+  autoRenew         Boolean          @default(true)
+  
+  // Usage tracking
+  listingsUsed      Int              @default(0)
+  featuredUsed      Int              @default(0)
+  
+  // Payment reference
+  lastPaymentId     String?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([endDate])
+}
+
+model PayPerListingTransaction {
+  id                String           @id @default(cuid())
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  
+  listingId         String
+  
+  type              String           // "FEATURED" or "EXTRA_SLOT"
+  amount            Decimal
+  currency          String           @default("PKR")
+  
+  paymentId         String?
+  
+  status            PaymentStatus    @default(PENDING)
+  processedAt       DateTime?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([listingId])
+  @@index([status])
+}
+
+// ============================================================================
+// SECURITY DEPOSIT
+// ============================================================================
+
+model SecurityDeposit {
+  id                String           @id @default(cuid())
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  
+  amount            Decimal          @default(2500000) // PKR 25L default
+  currency          String           @default("PKR")
+  
+  status            SecurityDepositStatus @default(PENDING)
+  
+  // Payment tracking
+  paymentId         String?
+  transactionId     String?
+  
+  // Approval tracking
+  approvedAt        DateTime?
+  approvedBy        String?
+  rejectionReason   String?
+  rejectedAt        DateTime?
+  
+  // Refund tracking
+  refundedAt        DateTime?
+  refundAmount      Decimal?
+  refundReason      String?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 // ============================================================================
@@ -512,6 +650,36 @@ model ChatMessage {
 // ============================================================================
 // NOTIFICATIONS
 // ============================================================================
+
+model UserNotification {
+  id                String           @id @default(cuid())
+  
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  
+  type              NotificationType
+  title             String
+  message           String
+  data              String?
+  
+  // Notification delivery tracking
+  emailSent         Boolean          @default(false)
+  smsSent           Boolean          @default(false)
+  emailSentAt       DateTime?
+  smsSentAt         DateTime?
+  
+  // Status
+  isRead            Boolean          @default(false)
+  readAt            DateTime?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+}
 
 model Notification {
   id                String           @id @default(cuid())
